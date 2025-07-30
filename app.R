@@ -5,17 +5,22 @@ library(stringr)
 library(DT)
 library(bslib)
 library(shinycssloaders)
+library(words)
+data("words")
+# Rename for clarity
+words_data <- words
+
 
 ui <- fluidPage(
   theme = bs_theme(
-    version = 5,
+    version    = 5,
     bootswatch = "minty",
-    bg = "#f0f2f5",
-    fg = "#2c3e50",
-    primary = "#1abc9c",
-    secondary = "#34495e",
-    base_font = font_google("Lato"),
-    code_font = font_google("Source Code Pro")
+    bg         = "#f0f2f5",
+    fg         = "#2c3e50",
+    primary    = "#1abc9c",
+    secondary  = "#34495e",
+    base_font  = font_google("Lato"),
+    code_font  = font_google("Source Code Pro")
   ),
   tags$head(
     tags$style(HTML(
@@ -30,11 +35,11 @@ ui <- fluidPage(
       div(class = "filter-box",
           pickerInput(
             inputId = "allowed",
-            label = tagList(icon("font"), "Allowed Letters"),
+            label   = tagList(icon("font"), "Allowed Letters"),
             choices = letters,
-            multiple = TRUE,
-            selected = strsplit("e,g,o,a,t,n", ",")[[1]],
-            options = pickerOptions(liveSearch = TRUE)
+            multiple  = TRUE,
+            selected  = strsplit("e,g,o,a,t,n", ",")[[1]],
+            options   = pickerOptions(liveSearch = TRUE)
           ),
           textInputIcon(
             inputId = "key",
@@ -65,28 +70,30 @@ ui <- fluidPage(
 )
 
 
-server <- function(input, output, session) {
-  filtered <- reactive({
-    req(input$allowed, input$key)
-    allowed_set <- unique(c(input$key, input$allowed))
-    forbid_rx   <- paste0("^[", paste0(allowed_set, collapse = ""), "]+$")
-    words %>%
-      filter(
-        nchar(word) >= input$minlen,
-        str_detect(word, fixed(input$key)),
-        str_detect(word, regex(forbid_rx))
-      ) %>%
-      select(word)
-  })
-  
-  output$table <- renderDT({
-    datatable(
-      filtered(),
-      options  = list(pageLength = 10, dom = 't<"bottom"ip>'),
-      rownames = FALSE
-    )
-  })
+app_server <- function(words_data) {
+  function(input, output, session) {
+    filtered <- reactive({
+      req(input$allowed, input$key)
+      allowed_set <- unique(c(input$key, input$allowed))
+      forbid_rx   <- paste0("^[", paste0(allowed_set, collapse = ""), "]+$")
+      words_data %>%
+        filter(
+          nchar(word) >= input$minlen,
+          str_detect(word, fixed(input$key)),
+          str_detect(word, regex(forbid_rx))
+        ) %>%
+        select(word)
+    })
+    
+    output$table <- renderDT({
+      datatable(
+        filtered(),
+        options  = list(pageLength = 10, dom = 't<"bottom"ip>'),
+        rownames = FALSE
+      )
+    })
+  }
 }
 
 
-shinyApp(ui, server)
+shinyApp(ui = ui, server = app_server(words_data))
